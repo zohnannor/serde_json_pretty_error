@@ -1,0 +1,16 @@
+[package]
+name = "serde_json_pretty_error"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["std"]
+std = ["serde_json/std"]
+alloc = ["serde_json/alloc"]
+
+[dependencies]
+serde = { version = "1.0.152", default-features = false }
+serde_json = { version = "1.0.91", default-features = false }
+
+[dev-dependencies]
+serde = { version = "1.0.152", features = ["derive"] }
