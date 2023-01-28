@@ -4,7 +4,10 @@ use core::fmt;
 #[cfg(not(feature = "std"))]
 use core::marker::PhantomData;
 #[cfg(feature = "std")]
-use std::{borrow::Cow, error, io};
+use std::{borrow::Cow, error, io, path::PathBuf};
+
+#[cfg(feature = "colors")]
+use owo_colors::{OwoColorize, Style};
 
 /// Shim for [`serde_json::Error`] which keeps source around for better error
 /// messages.
@@ -13,9 +16,17 @@ use std::{borrow::Cow, error, io};
 /// deserializing JSON data.
 pub struct Error<'s> {
     #[cfg(feature = "std")]
+    /// Bytes of the source of deserialization.
     pub(crate) src: Cow<'s, [u8]>,
+
     #[cfg(not(feature = "std"))]
     pub(crate) src: PhantomData<&'s ()>,
+
+    #[cfg(feature = "std")]
+    /// Name of the file.
+    pub(crate) filename: Option<PathBuf>,
+
+    /// Original error from [`serde_json`].
     pub(crate) inner: serde_json::Error,
 }
 
@@ -35,14 +46,10 @@ impl fmt::Debug for Error<'_> {
 
 impl fmt::Display for Error<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use serde_json::error::Category;
-
         let err = &self.inner;
 
-        err.fmt(f)?;
-
-        if err.classify() == Category::Io {
-            return Ok(());
+        if err.is_io() {
+            return err.fmt(f);
         }
 
         #[cfg(feature = "std")]
@@ -57,27 +64,35 @@ impl fmt::Display for Error<'_> {
                 .expect("valid line number");
             let content = String::from_utf8_lossy(content);
 
-            writeln!(f)?;
-            //   |
-            for _ in 0..=gutter {
-                write!(f, " ")?;
-            }
-            writeln!(f, "|")?;
+            let bar = "|";
+            #[cfg(feature = "colors")]
+            let bar = bar.style(Style::new().bold().blue());
 
-            // 1 | 00:32:00.a999999
-            write!(f, "{line_num} | ")?;
-            writeln!(f, "{content}")?;
+            let arrow = "-->";
+            #[cfg(feature = "colors")]
+            let arrow = arrow.style(Style::new().bold().blue());
 
-            //   |          ^
-            for _ in 0..=gutter {
-                write!(f, " ")?;
+            let caret = "^";
+            #[cfg(feature = "colors")]
+            let caret = caret.style(Style::new().bold().red());
+
+            #[cfg(feature = "colors")]
+            let err = err.style(Style::new().bold().red());
+
+            //     --> dir/file.json:111:222
+            if let Some(filename) = &self.filename {
+                let filename = filename.display();
+                writeln!(f, "{: >gutter$}{arrow} {filename}", " ")?;
             }
-            write!(f, "|")?;
-            for _ in 0..=column {
-                write!(f, " ")?;
-            }
-            write!(f, "^")?;
-            writeln!(f)?;
+
+            //      |
+            writeln!(f, "{: >gutter$} {bar}", " ")?;
+
+            // line |         "hello": 42,
+            writeln!(f, "{line_num: >gutter$} {bar} {content}")?;
+
+            //      |                  ^invalid type: i32, expected string at line 111 column 222
+            writeln!(f, "{: >gutter$} {bar}{caret: >column$} {err}", " ")?;
         }
         Ok(())
     }
@@ -103,6 +118,7 @@ impl From<io::Error> for Error<'_> {
         Self {
             src: [].as_slice().into(),
             inner: serde_json::Error::io(value),
+            filename: None,
         }
     }
 }

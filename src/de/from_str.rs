@@ -12,7 +12,7 @@ use crate::{Error, Result};
 /// # Errors
 ///
 /// See [`serde_json::from_str`].
-pub fn from_str<'s, T>(s: &'s str) -> Result<T>
+pub fn from_str<'s, T>(s: &'s str) -> Result<'s, T>
 where
     T: Deserialize<'s>,
 {
@@ -23,6 +23,7 @@ where
         #[cfg(not(feature = "std"))]
         src: PhantomData,
         inner: err,
+        filename: None,
     })
 }
 

@@ -23,6 +23,7 @@ where
     T::deserialize(&mut de).map_err(|err| Error {
         src: s.into_bytes().into(),
         inner: err,
+        filename: None,
     })
 }
 

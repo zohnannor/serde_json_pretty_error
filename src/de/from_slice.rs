@@ -2,7 +2,7 @@
 #[cfg(not(feature = "std"))]
 use core::marker::PhantomData;
 
-use serde::de::DeserializeOwned;
+use serde::de::Deserialize;
 use serde_json::Deserializer;
 
 use crate::{Error, Result};
@@ -12,9 +12,9 @@ use crate::{Error, Result};
 /// # Errors
 ///
 /// See [`serde_json::from_slice`].
-pub fn from_slice<T>(s: &[u8]) -> Result<'_, T>
+pub fn from_slice<'s, T>(s: &'s [u8]) -> Result<'s, T>
 where
-    T: DeserializeOwned,
+    T: Deserialize<'s>,
 {
     let mut de = Deserializer::from_slice(s);
     T::deserialize(&mut de).map_err(|err| Error {
@@ -23,6 +23,7 @@ where
         #[cfg(not(feature = "std"))]
         src: PhantomData,
         inner: err,
+        filename: None,
     })
 }
 

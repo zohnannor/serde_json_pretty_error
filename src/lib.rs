@@ -1,4 +1,6 @@
 #![doc = include_str!("../README.md")]
+//! It produces output such as this:
+#![doc = concat!("<pre>", include_str!("../output.html"), "</pre>")]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![warn(clippy::all, clippy::pedantic, clippy::nursery, missing_docs)]
 #![cfg_attr(not(debug_assertions), forbid(warnings))]
@@ -6,6 +8,9 @@
 pub mod de;
 pub mod error;
 
+#[cfg(feature = "std")]
+#[doc(inline)]
+pub use de::from_file::from_file;
 #[cfg(feature = "std")]
 #[doc(inline)]
 pub use de::from_reader::from_reader;
